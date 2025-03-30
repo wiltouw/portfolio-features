@@ -22,6 +22,23 @@ Want to try out the experience?
 👉 [willemtouw.com](https://willemtouw.com) the small terminal button top right :)
 
 This repo only contains the standalone page (`portfoliotransition.html`) and relevant assets.
+## 🛠Technical Overview
+
+This module is built entirely with vanilla HTML, CSS, and JavaScript—no external libraries or frameworks. The core goal is to create an immersive, retro-futuristic UX inspired by games like *Cyberpunk 2077* and *Deus Ex*, simulating a secure OS interface with a hint of narrative depth. (still a work in progress!)
+
+**Key Systems Implemented:**
+
+- **Boot Sequence Simulator:** Uses timed line-by-line rendering with sound effects to mimic a BIOS-style startup.
+- **Login System:** Verifies hardcoded credentials and triggers a fake secure environment experience.
+- **Desktop Environment:** Features styled desktop icons with click functionality, faux file viewer popups, and a persistent taskbar.
+- **Terminal Interface:** Custom shell-like UI that accepts commands (`help`, `ls`, `cat`, etc.), including file parsing and dynamic outputs.
+- **Glyph Puzzle System:** Implements a randomized visual authentication puzzle mapped to a key string (`K7GX3ZR8A`) with error handling and feedback.
+- **Passphrase Override:** Unlocks final content after solving the puzzle and answering a narrative riddle.
+- **Sound Design:** Audio feedback is embedded for every major interaction using preloaded sound assets. (In process)
+- -**More In the works**
+
+The entire interaction flow is state-managed within the DOM—no backend, no APIs. Everything is self-contained and crafted for aesthetic storytelling.
+
 
 ## Notes
 
