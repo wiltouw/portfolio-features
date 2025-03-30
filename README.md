@@ -19,7 +19,7 @@ This module is styled as a fictional secure login system for "ARASAKA OS :: SHIN
 ## Try It Live
 
 Want to try out the experience?
-👉 [willemtouw.com](https://willemtouw.com)
+👉 [willemtouw.com](https://willemtouw.com) the small terminal button top right :)
 
 This repo only contains the standalone page (`portfoliotransition.html`) and relevant assets.
 
