@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARASAKA OS :: Secure Environment</title>
+
+    <!-- Google Fonts: VT323 (Mono) and Patrick Hand (Handwriting) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        /* Okay, let's style this thing up Arasaka style */
+        /* === ARASAKA CORE STYLES === */
+        * { box-sizing: border-box; user-select: none; }
+        :root {
+            --arasaka-red: #CC0000; /* The iconic Arasaka red */
+            --arasaka-red-hover: #FF0000; /* Make it pop a bit on hover */
+            --arasaka-bg: #050505; /* Nice deep black for the background */
+            --arasaka-desktop-bg: #0a0a0a; /* Just a touch lighter for the main desktop area */
+            --arasaka-terminal-bg: rgba(10, 10, 10, 0.9); /* Semi-transparent dark background for the terminal */
+            --arasaka-window-bg: #101010; /* Background for the file viewer window */
+            --arasaka-border: #444444; /* Standard border color, dark gray */
+            --arasaka-border-accent: var(--arasaka-red); /* Accent border using the main red */
+            --arasaka-text-primary: #E0E0E0; /* Main text color, easy on the eyes */
+            --arasaka-text-secondary: #AAAAAA; /* For less important text bits */
+            --arasaka-text-accent: var(--arasaka-red); /* Highlight text in Arasaka red */
+            --scrollbar-track: #1a1a1a; /* Scrollbar track color */
+            --scrollbar-thumb: var(--arasaka-red); /* Scrollbar thumb color */
+            --scrollbar-thumb-hover: var(--arasaka-red-hover); /* Scrollbar thumb hover color */
+            --taskbar-height: 35px; /* Taskbar height, gotta make space for it */
+            --sticky-note-bg: #ffffa0; /* Yellowish for sticky note, classic */
+            --sticky-note-text: #333; /* Default sticky text color (but we use Patrick Hand which sets its own) */
+        }
+        body {
+            background-color: var(--arasaka-bg);
+            color: var(--arasaka-text-primary);
+            font-family: 'VT323', monospace; /* Our main retro font */
+            font-size: 18px;
+            line-height: 1.6;
+            margin: 0;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* === VISUAL EFFECTS === */
+        #scanlines {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient( 0deg, rgba(200, 200, 200, 0.03), rgba(200, 200, 200, 0.03) 1px, transparent 1px, transparent 4px );
+            pointer-events: none; z-index: 600; /* Make sure scanlines are on top of almost everything */
+        }
+
+        /* === BOOT SCREEN === */
+        #boot-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--arasaka-bg);
+            color: var(--arasaka-text-secondary);
+            padding: 30px;
+            font-size: 1em; /* Inherits the base font size */
+            line-height: 1.4;
+            white-space: pre-wrap;
+            z-index: 550;
+            overflow-y: auto;
+            font-family: 'VT323', monospace; /* Make sure the boot screen uses the mono font too */
+        }
+        .boot-line.highlight { color: var(--arasaka-text-primary); }
+        .boot-line.error { color: var(--arasaka-red); }
+
+        /* === LOGIN SCREEN === */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--arasaka-bg);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 500; padding: 20px;
+            font-family: 'VT323', monospace; /* Gotta keep the mono font for the login */
+        }
+        #login-box {
+            background-color: var(--arasaka-terminal-bg);
+            border: 1px solid var(--arasaka-border-accent);
+            padding: 30px 40px; min-width: 350px; text-align: center;
+            box-shadow: 0 0 15px rgba(204, 0, 0, 0.3);
+            position: relative;
+        }
+        #login-title {
+            color: var(--arasaka-red); font-size: 1.8em; margin-bottom: 25px;
+            text-shadow: 0 0 5px var(--arasaka-red);
+        }
+        .login-field { margin-bottom: 15px; text-align: left; }
+        .login-field label { display: block; margin-bottom: 5px; color: var(--arasaka-text-secondary); font-size: 0.9em; }
+        .login-field input {
+            width: 100%; background-color: rgba(0,0,0,0.3);
+            border: 1px solid var(--arasaka-border); color: var(--arasaka-text-primary);
+            padding: 8px 10px; font-family: inherit; font-size: 1.1em; outline: none;
+        }
+        .login-field input:focus { border-color: var(--arasaka-red-hover); box-shadow: 0 0 5px rgba(204, 0, 0, 0.5) inset; }
+        #login-button {
+            background-color: var(--arasaka-red); border: 1px solid #800;
+            color: var(--arasaka-bg); padding: 10px 25px; font-family: inherit;
+            font-size: 1.1em; cursor: pointer; margin-top: 10px;
+            transition: background-color 0.2s, border-color 0.2s; width: 100%;
+        }
+        #login-button:hover { background-color: var(--arasaka-red-hover); border-color: var(--arasaka-red); }
+        #login-error {
+            color: var(--arasaka-red); min-height: 1.2em; margin-top: 15px;
+            font-size: 0.9em; text-shadow: 0 0 3px var(--arasaka-red);
+        }
+
+        /* === THE HANDY STICKY NOTE === */
+        #sticky-note {
+            position: absolute;
+            top: -20px;
+            right: -30px;
+            background-color: var(--sticky-note-bg);
+            font-family: 'Patrick Hand', cursive;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.4;
+            text-align: left;
+            padding: 15px;
+            box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.4);
+            transform: rotate(5deg);
+            width: 180px;
+            z-index: 510;
+            border: 1px solid #ccc;
+            white-space: pre-wrap;
+        }
+        #sticky-note strong { font-weight: bold; }
+
+
+        /* === THE DESKTOP AREA === */
+        #desktop-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--arasaka-desktop-bg); z-index: 1;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            grid-auto-rows: 130px; gap: 20px; padding: 30px;
+            padding-bottom: calc(var(--taskbar-height) + 20px); /* Leave space at the bottom for the taskbar */
+            overflow-y: auto;
+             &::-webkit-scrollbar { width: 6px; }
+            &::-webkit-scrollbar-track { background: transparent; }
+            &::-webkit-scrollbar-thumb { background-color: var(--arasaka-border); }
+            scrollbar-width: thin;
+            scrollbar-color: var(--arasaka-border) transparent;
+            font-family: 'VT323', monospace;
+        }
+        .desktop-icon {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start; width: 100px; padding: 10px 5px;
+            cursor: pointer; text-align: center; border: 1px solid transparent;
+            transition: background-color 0.2s, border-color 0.2s; margin: 0 auto;
+        }
+         .desktop-icon:hover { background-color: rgba(255, 255, 255, 0.05); border: 1px dashed var(--arasaka-border); }
+         .desktop-icon .icon-symbol { font-size: 3em; margin-bottom: 8px; color: var(--arasaka-text-secondary); line-height: 1; }
+         .desktop-icon:hover .icon-symbol { color: var(--arasaka-text-primary); }
+         .desktop-icon .icon-label { font-size: 0.9em; word-break: break-word; line-height: 1.2; max-height: 2.4em; overflow: hidden; }
+         .desktop-icon[data-target="terminal"] .icon-symbol { color: var(--arasaka-red); }
+         .desktop-icon[data-target="terminal"]:hover .icon-symbol { filter: brightness(1.5); }
+
+        /* === TASKBAR === */
+        #taskbar {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            height: var(--taskbar-height); background-color: var(--arasaka-terminal-bg);
+            border-top: 1px solid var(--arasaka-red); box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.3);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 15px; z-index: 50; color: var(--arasaka-text-secondary);
+            font-family: 'VT323', monospace;
+        }
+        #taskbar-clock { font-size: 0.95em; color: var(--arasaka-text-primary); }
+        #taskbar-details { flex-grow: 1; font-size: 0.9em; padding-left: 15px; } /* Added some padding so text isn't right against the edge */
+
+
+        /* === FILE VIEWER POPUP === */
+        #file-viewer {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80%; max-width: 650px; height: 70vh; max-height: 500px;
+            background-color: var(--arasaka-window-bg); border: 1px solid var(--arasaka-border-accent);
+            box-shadow: 0 0 10px var(--arasaka-red) inset, 0 0 8px var(--arasaka-red);
+            z-index: 100; display: flex; flex-direction: column;
+            font-family: 'VT323', monospace;
+             #file-viewer-titlebar { background-color: var(--arasaka-red); color: var(--arasaka-bg); padding: 5px 10px; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--arasaka-border); }
+             #file-viewer-filename { font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.5); }
+             #file-viewer-close { background: none; border: none; color: var(--arasaka-bg); font-size: 1.3em; font-family: monospace; cursor: pointer; padding: 0 5px; line-height: 1; }
+             #file-viewer-close:hover { filter: brightness(0.8); }
+             #file-viewer-content { padding: 15px; flex-grow: 1; overflow-y: auto; white-space: pre-wrap; font-size: 0.95em;
+                &::-webkit-scrollbar { width: 8px; } &::-webkit-scrollbar-track { background: var(--scrollbar-track); border-left: 1px solid var(--arasaka-border); } &::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); border: 1px solid #000; } &::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); }
+                scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+             }
+        }
+
+        /* === THE MAIN TERMINAL WINDOW (GAME AREA) === */
+        #game-container {
+            width: 100%; max-width: 800px; position: fixed;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 200;
+            font-family: 'VT323', monospace;
+             #terminal { background-color: var(--arasaka-terminal-bg); border: 1px solid var(--arasaka-border); box-shadow: 0 0 8px rgba(204, 0, 0, 0.3) inset, 0 0 5px rgba(204, 0, 0, 0.2); padding: 15px; height: 75vh; max-height: 600px; display: flex; flex-direction: column; overflow: hidden; }
+             #terminal-output { flex-grow: 1; overflow-y: auto; padding-right: 10px; word-wrap: break-word; white-space: pre-wrap;
+                &::-webkit-scrollbar { width: 8px; } &::-webkit-scrollbar-track { background: var(--scrollbar-track); border-left: 1px solid var(--arasaka-border); } &::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); border: 1px solid #000; } &::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); }
+                scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+             }
+             .output-line.log { color: var(--arasaka-text-primary); } .output-line.error { color: var(--arasaka-red); text-shadow: 0 0 5px var(--arasaka-red);} .output-line.warning { color: #FFA500; text-shadow: 0 0 5px #FFA500;} .output-line.success { color: var(--arasaka-text-primary); font-weight: bold; } .output-line.prompt-input { color: var(--arasaka-text-secondary); } .output-line.recovered-data { color: #777; font-style: italic; }
+             #input-line { display: flex; align-items: center; padding-top: 10px; border-top: 1px dashed var(--arasaka-border); }
+             #prompt { color: var(--arasaka-text-accent); margin-right: 8px; text-shadow: 0 0 4px var(--arasaka-red); }
+             #terminal-input { background-color: transparent; border: none; color: #ffffff; font-family: inherit; font-size: inherit; flex-grow: 1; outline: none; caret-color: transparent; }
+             #cursor { background-color: var(--arasaka-text-accent); width: 10px; height: 1.2em; display: inline-block; vertical-align: middle; animation: blink 1s step-end infinite; margin-left: 2px; box-shadow: 0 0 5px var(--arasaka-red); }
+             @keyframes blink { 0%, 100% { background-color: var(--arasaka-red); } 50% { background-color: transparent; } }
+             #visual-puzzle-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%; max-width: 500px; background-color: #0f0f0f; border: 1px solid var(--arasaka-red); box-shadow: 0 0 10px var(--arasaka-red) inset, 0 0 8px var(--arasaka-red); padding: 25px; z-index: 10; text-align: center; color: var(--arasaka-text-primary); }
+             #puzzle-title { font-size: 1.5em; color: var(--arasaka-red); text-shadow: 0 0 5px var(--arasaka-red); margin-bottom: 15px; border-bottom: 1px solid var(--arasaka-border); padding-bottom: 10px; }
+             #puzzle-instruction { margin-bottom: 20px; font-size: 1.1em; color: var(--arasaka-text-secondary); }
+             #puzzle-instruction span { color: var(--arasaka-text-primary); font-weight: bold; }
+             #puzzle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+             .puzzle-glyph { background-color: rgba(50, 50, 50, 0.3); border: 1px solid var(--arasaka-border); color: var(--arasaka-text-primary); font-size: 1.5em; padding: 15px 0; cursor: pointer; transition: background-color 0.2s, color 0.2s, transform 0.1s, border-color 0.2s; text-align: center; user-select: none; text-shadow: none; }
+             .puzzle-glyph:hover { background-color: rgba(204, 0, 0, 0.3); color: #ffffff; border-color: var(--arasaka-red-hover); }
+             .puzzle-glyph:active { transform: scale(0.95); background-color: rgba(204, 0, 0, 0.5); }
+             .puzzle-glyph.selected { border-color: var(--arasaka-red-hover); color: #fff; }
+             .puzzle-glyph.error-flash { animation: flash-arasaka-red 0.4s ease-out; }
+             @keyframes flash-arasaka-red { 0%, 100% { background-color: rgba(50, 50, 50, 0.3); border-color: var(--arasaka-red); } 50% { background-color: rgba(204, 0, 0, 0.8); border-color: var(--arasaka-red-hover); color: #fff; } }
+             #puzzle-feedback { min-height: 1.2em; margin-bottom: 10px; font-weight: bold; }
+             #puzzle-feedback.error { color: var(--arasaka-red); }
+             #puzzle-feedback.success { color: var(--arasaka-text-primary); font-weight: bold; }
+             #puzzle-input-sequence { font-size: 0.9em; color: var(--arasaka-text-secondary); }
+             #puzzle-input-sequence span { color: #fff; letter-spacing: 3px; }
+        }
+
+        /* === Arasaka Annoyances (Notification System) === */
+        #notification-area {
+            position: fixed;
+            bottom: calc(var(--taskbar-height) + 15px); /* Position it just above the taskbar */
+            right: 15px;
+            width: 300px;
+            z-index: 400; /* Needs to be above desktop icons but below popups */
+            display: flex;
+            flex-direction: column-reverse; /* Makes new notifications appear at the bottom */
+            gap: 10px;
+        }
+        .notification {
+            background-color: rgba(30, 30, 30, 0.95); /* Nice dark, slightly see-through background */
+            border: 1px solid var(--arasaka-border);
+            border-left: 3px solid var(--arasaka-red);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            color: var(--arasaka-text-secondary);
+            padding: 12px 15px;
+            font-size: 0.85em;
+            position: relative; /* Needed to position the little 'x' button */
+            opacity: 0;
+            transform: translateX(100%);
+            animation: slideInFade 0.5s forwards;
+        }
+        @keyframes slideInFade {
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .notification strong {
+            color: var(--arasaka-red);
+            display: block;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+        .notification-close {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            background: none;
+            border: none;
+            color: var(--arasaka-text-secondary);
+            font-size: 1.2em;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        .notification-close:hover {
+            color: var(--arasaka-text-primary);
+        }
+        /* === END Notification System === */
+
+        /* === UTILITY CLASSES === */
+        .hidden { display: none !important; }
+        /* And that's the styling done! */
+    </style>
+</head>
+<body>
+    <!-- Here's the actual stuff you see on the page -->
+    <div id="scanlines"></div>
+
+    <!-- The boot sequence text goes here, hidden at first -->
+    <div id="boot-screen" class="hidden"></div>
+
+    <!-- The login prompt, also starts hidden -->
+    <div id="login-screen" class="hidden">
+        <div id="login-box">
+            <div id="login-title">ARASAKA OS :: SHINOBI v6.2</div>
+            <form id="login-form">
+                <div class="login-field">
+                    <label for="login-username">OPERATIVE ID:</label>
+                    <input type="text" id="login-username" name="username" required>
+                </div>
+                <div class="login-field">
+                    <label for="login-password">PASSCODE:</label>
+                    <input type="password" id="login-password" name="password" required>
+                </div>
+                <button type="submit" id="login-button">AUTHENTICATE</button>
+                <div id="login-error"></div>
+            </form>
+            <div id="sticky-note" class="hidden">
+                <strong>Reminder!</strong>
+                Node LX-42 Access:
+                ID: KIBARASHI_734
+                Code: Chimera3!7G
+                - Don't lose this!
+            </div>
+        </div>
+    </div>
+
+    <!-- The main desktop area with icons, hidden until login -->
+    <div id="desktop-container" class="hidden"></div>
+
+    <!-- Popup window for viewing files, hidden initially -->
+    <div id="file-viewer" class="hidden">
+        <div id="file-viewer-titlebar">
+            <span id="file-viewer-filename"></span>
+            <button id="file-viewer-close">X</button>
+        </div>
+        <div id="file-viewer-content"></div>
+    </div>
+
+    <!-- The terminal where the main game happens, starts hidden -->
+    <div id="game-container" class="hidden">
+        <div id="terminal">
+            <div id="terminal-output"></div>
+            <div id="input-line" class="input-line">
+                <span id="prompt">#</span>
+                <input type="text" id="terminal-input" autocomplete="off">
+                <span id="cursor">_</span>
+            </div>
+        </div>
+        <div id="visual-puzzle-container" class="hidden">
+             <div id="puzzle-title">:: ARASAKA KMI INTERFACE ::</div>
+             <div id="puzzle-instruction">Authenticate Glyphic Signature: <span id="puzzle-signature"></span></div>
+             <div id="puzzle-grid"></div>
+             <div id="puzzle-feedback"></div>
+             <div id="puzzle-input-sequence">Input Buffer: <span></span></div>
+        </div>
+    </div>
+
+    <!-- The taskbar at the bottom, hidden until login -->
+    <div id="taskbar" class="hidden">
+        <div id="taskbar-details">NET: AICN v3.1 SECURE | CPU: IDLE</div> <!-- Some placeholder text for the taskbar details -->
+        <div id="taskbar-clock">00:00:00</div>
+    </div>
+
+    <!-- Area where notifications will pop up -->
+    <div id="notification-area"></div>
+    <!-- End of the notification stuff -->
+
+    <!-- That's all the HTML structure -->
+
+    <script>
+        // === LET THE JAVASCRIPT MAGIC BEGIN! ===
+        document.addEventListener('DOMContentLoaded', () => {
+            // First things first, let's grab all the HTML elements we'll need to play with
+            const bootScreen = document.getElementById('boot-screen');
+            const loginScreen = document.getElementById('login-screen');
+            const loginForm = document.getElementById('login-form');
+            const loginUsernameInput = document.getElementById('login-username');
+            const loginPasswordInput = document.getElementById('login-password');
+            const loginError = document.getElementById('login-error');
+            const stickyNote = document.getElementById('sticky-note');
+            const desktopContainer = document.getElementById('desktop-container');
+            const fileViewer = document.getElementById('file-viewer');
+            const fileViewerFilename = document.getElementById('file-viewer-filename');
+            const fileViewerContent = document.getElementById('file-viewer-content');
+            const fileViewerCloseBtn = document.getElementById('file-viewer-close');
+            const taskbar = document.getElementById('taskbar');
+            const taskbarClock = document.getElementById('taskbar-clock');
+            const taskbarDetails = document.getElementById('taskbar-details'); // New element for taskbar details
+            const gameContainer = document.getElementById('game-container');
+            const terminalOutput = document.getElementById('terminal-output');
+            const terminalInput = document.getElementById('terminal-input');
+            const inputLine = document.getElementById('input-line');
+            const puzzleContainer = document.getElementById('visual-puzzle-container');
+            const puzzleGrid = document.getElementById('puzzle-grid');
+            const puzzleSignature = document.getElementById('puzzle-signature');
+            const puzzleFeedback = document.getElementById('puzzle-feedback');
+            const puzzleInputSpan = document.querySelector('#puzzle-input-sequence span');
+            const notificationArea = document.getElementById('notification-area'); // New area for notifications
+
+            // Shhh, secret login details
+            const CORRECT_USERNAME = "KIBARASHI_734";
+            const CORRECT_PASSWORD = "Chimera3!7G";
+
+            // All the text lines for that cool boot-up sequence
+            const bootMessages = [
+                { text: "ARASAKA BIOS v4.77a Initializing...", delay: 300, sound: 'boot_beep' },
+                { text: "CPU: Arasaka FusionCore @ 8.2 GHz (128 Cores) ........ [OK]", delay: 150, sound: 'boot_short_confirm' },
+                { text: "RAM: 256 EB Quantum Entanglement Module ............... [OK]", delay: 150, sound: 'boot_short_confirm' },
+                { text: "Checking NVRAM Integrity............................... [OK]", delay: 200, sound: 'boot_scan' },
+                { text: "Detecting KMI Secure Interface Module.................. [DETECTED]", delay: 150, sound: 'boot_detect' },
+                { text: "Initializing Counter-Intrusion Suite 'KEMPEITAI'....... [ACTIVE]", class: "highlight", delay: 300, sound: 'boot_activate' },
+                { text: "Network Interface (AICN Protocol v3.1)................. [ONLINE]", delay: 150, sound: 'boot_short_confirm' },
+                { text: "System Temperature Sensors............................. [NOMINAL]", delay: 100 },
+                { text: "WARNING: Anomalous Energy Signature Detected (Sector 7G)", class: "error", delay: 400, sound: 'boot_warning' },
+                { text: "Attempting local bypass................................ [FAILED]", class: "error", delay: 200, sound: 'boot_fail' },
+                { text: "Loading ARASAKA OS 'SHINOBI' v6.2......................", delay: 500, sound: 'boot_load' },
+                { text: "Boot Sequence Complete. Transferring to Auth Shell...", class: "highlight", delay: 600, sound: 'boot_complete' }
+            ];
+
+            // Some delightful Arasaka notifications to sprinkle in
+            const arasakaNotifications = [
+                 { title: "System Alert", message: "KEMPEITAI protocol update scheduled. Stand by." },
+                 { title: "Corporate Mandate", message: "Reminder: All personal logs subject to automated review. Compliance is mandatory." },
+                 { title: "Security Bulletin", message: "Increased network chatter detected near Pacifica external relays. Maintain vigilance." },
+                 { title: "Maintenance Notice", message: "Automated diagnostic sweep running in background. Minor performance fluctuations possible." },
+                 { title: "R&D Update", message: "Project Chimera: Sub-vocalization implant trials show 'promising' psychic echo phenomena." },
+                 { title: "Internal Affairs", message: "Data Integrity Check: Ensure all reports are filed by end-of-cycle. No exceptions." }
+            ];
+
+            // Some variables to keep track of things
+            let clockIntervalId = null;
+            let notificationIntervalId = null; // To control the notification timer
+
+            // === Handling all the Beeps and Boops (Sound) ===
+            const audioCache = {};
+            const baseAudioPath = './audio/'; // Make sure the 'audio' folder exists where this HTML file is!
+            const soundFiles = [ // We need to tell the script which sound files to expect
+                 'boot_beep.wav', 'boot_short_confirm.wav', 'boot_scan.wav', 'boot_detect.wav',
+                 'boot_activate.wav', 'boot_warning.wav', 'boot_fail.wav', 'boot_load.wav',
+                 'boot_complete.wav', 'login_success.wav', 'login_fail.wav', 'desktop_click.wav',
+                 'file_open.wav', 'file_close.wav', 'terminal_open.wav', 'typewriter.wav',
+                 'terminal_error.wav', 'puzzle_click_valid.wav', 'puzzle_click_invalid.wav',
+                 'puzzle_success.wav', 'puzzle_fail.wav', 'passphrase_success.wav',
+                 'passphrase_fail.wav', 'notification_popup.wav', 'ambient_hum.wav'
+            ];
+
+            function loadSounds() {
+                soundFiles.forEach(file => {
+                    const name = file.split('.')[0]; // Use the name like 'boot_beep' to play the sound
+                    const audio = new Audio(baseAudioPath + file);
+                    audio.load(); // Tell the browser to start loading the sound file
+                    audioCache[name] = audio;
+                });
+                // The ambient hum needs to loop forever
+                if (audioCache['ambient_hum']) {
+                    audioCache['ambient_hum'].loop = true;
+                    audioCache['ambient_hum'].volume = 0.1; // Don't want the hum to be too loud
+                }
+                 // Typewriter sound can get annoying, lower the volume
+                 if (audioCache['typewriter']) {
+                     audioCache['typewriter'].volume = 0.3;
+                }
+
+            }
+
+            function playSound(name, volume = 0.7) {
+                if (audioCache[name]) {
+                    // Stop the sound if it's already playing, then restart (unless it's the looping hum or typewriter)
+                    if (name !== 'ambient_hum' && name !== 'typewriter' && !audioCache[name].paused) {
+                        audioCache[name].pause();
+                        audioCache[name].currentTime = 0;
+                    } else if (name === 'typewriter' && !audioCache[name].paused) {
+                         // Let the typewriter sound restart immediately if needed
+                         audioCache[name].currentTime = 0;
+                    }
+
+                    audioCache[name].volume = volume;
+                    // Using .catch() because browsers sometimes block autoplay unexpectedly
+                    audioCache[name].play().catch(e => console.warn(`Sound play failed for ${name}:`, e));
+                } else {
+                    console.warn(`Sound not found: ${name}`);
+                }
+            }
+
+             function stopSound(name) {
+                 if (audioCache[name] && !audioCache[name].paused) {
+                     audioCache[name].pause();
+                     audioCache[name].currentTime = 0;
+                 }
+             }
+
+
+            // === HELPER FUNCTIONS ===
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            // === BOOTING UP THE SYSTEM ===
+            async function runBootSequence() {
+                bootScreen.classList.remove('hidden');
+                for (const msg of bootMessages) {
+                    const line = document.createElement('div');
+                    line.className = `boot-line ${msg.class || ''}`;
+                    line.textContent = msg.text;
+                    bootScreen.appendChild(line);
+                    bootScreen.scrollTop = bootScreen.scrollHeight; // Keep scrolled to the bottom
+                    if (msg.sound) playSound(msg.sound); // Play the specific sound for this boot line, if it has one
+                    await sleep(msg.delay);
+                }
+                await sleep(500); // Short pause before switching
+                bootScreen.classList.add('hidden');
+                showLoginScreen();
+            }
+
+            // === LOGIN LOGIC ===
+            function showLoginScreen() {
+                loginScreen.classList.remove('hidden');
+                stickyNote.classList.remove('hidden'); // Show the clue!
+                loginUsernameInput.focus(); // Put cursor in username field
+                stopSound('ambient_hum'); // Stop the ambient background noise during login
+            }
+
+            function handleLogin(event) {
+                event.preventDefault(); // Stop the form from actually submitting
+                const username = loginUsernameInput.value;
+                const password = loginPasswordInput.value;
+
+                if (username.toUpperCase() === CORRECT_USERNAME.toUpperCase() && password === CORRECT_PASSWORD) {
+                    playSound('login_success'); // Nice login chime
+                    loginError.textContent = ""; // Clear any previous error
+                    loginScreen.classList.add('hidden');
+                    stickyNote.classList.add('hidden');
+                    showDesktop(); // Let's go to the desktop!
+                } else {
+                    playSound('login_fail'); // Wrong password buzz
+                    loginError.textContent = "AUTHENTICATION FAILED. CHECK CREDENTIALS.";
+                    loginPasswordInput.value = ""; // Clear the password field
+                    loginUsernameInput.select(); // Highlight username for easy re-typing
+                }
+            }
+
+            loginForm.addEventListener('submit', handleLogin); // Listen for the submit button click
+
+            // === SETTING UP THE DESKTOP ===
+            function showDesktop() {
+                desktopContainer.classList.remove('hidden');
+                taskbar.classList.remove('hidden');
+                createDesktop(); // Put the icons on the screen
+                updateClock(); // Set the clock right away
+                 updateTaskbarDetails(); // Set the initial taskbar details too
+
+                // Start the clock interval if it's not already running
+                if (!clockIntervalId) {
+                   clockIntervalId = setInterval(() => {
+                       updateClock();
+                       updateTaskbarDetails(); // Update details periodically too
+                   }, 1000); // Update every second
+                }
+                // Start the timer for showing random notifications
+                if (!notificationIntervalId) {
+                    notificationIntervalId = setInterval(showRandomNotification, Math.random() * 40000 + 25000); // Don't show them too often, make it feel a bit random (25-65 seconds)
+                }
+                 playSound('ambient_hum'); // Start the background hum for the desktop
+            }
+
+             // === DESKTOP ICONS AND FILE CONTENTS ===
+             // Added a couple more files/folders for flavor
+            const desktopItems = [
+                 { name: "Project_Chimera_Brief.txt", type: "file", symbol: "📄" },
+                 { name: "Urgent_Memo_KIBARASHI.txt", type: "file", symbol: "📄" },
+                 { name: "Personal_Log_Entry_7.log", type: "file", symbol: "📄" },
+                 { name: "KEMPEITAI_Report_Delta.log", type: "file", symbol: "📄" }, // Kempeitai report, important!
+                 { name: "Network_Analysis", type: "folder", symbol: "📁" },
+                 { name: "Employee_Mandates", type: "folder", symbol: "📁" }, // NEW
+                 { name: "Node_Terminal", type: "app", symbol: ">_", target: "terminal" }
+            ];
+            // The actual text content for the files/folders
+            const desktopFilesContent = {
+                "Project_Chimera_Brief.txt": `ARASAKA R&D DIVISION - PROJECT CHIMERA // SECURITY LEVEL: OMEGA RED\n\nSUBJECT: Bio-Integration & AI Symbiosis Initiative\nSTATUS: Phase 3 Trials - ONGOING\n\nOVERVIEW:\nProject Chimera aims to develop the next generation of combat-ready human assets by integrating advanced AI constructs directly into enhanced biological hosts. Initial results show promise, but instability remains a key concern.\n\nDIRECTIVE:\nField Operative KIBARASHI (Unit 734) has been assigned to oversee physical security and data integrity for the primary Chimera development node (LX-42). Recent network scans indicate potential external interest. Maintain vigilance.\n\nNOTE: Direct access to LX-42 core functions requires KMI authentication via the node's secure terminal interface. Standard credentials insufficient. Further documentation restricted.\n\n:: END TRANSMISSION ::`,
+                "Urgent_Memo_KIBARASHI.txt": `TO: Operative Kibarashi (734)\nFROM: Counter-Intelligence Directorate\nSUBJECT: **IMMEDIATE ACTION REQUIRED - Network Anomaly LX-42**\n\nKibarashi,\n\nOur monitoring suites detected unusual energy signatures and fragmented data recovery attempts originating *within* Node LX-42, specifically sector 7G near the primary DATA_SHARDS. This coincides with your reports of localized system instability.\n\nKEMPEITAI protocols automatically scrambled the relevant signature keys, but the source of the anomaly is unknown. Could be internal hardware failure, could be... something else. R&D isn't talking.\n\nYour Priority 1 objective is unchanged: Secure Project Chimera data at all costs. However, you are now authorized to utilize the Secure Node Terminal for direct system diagnostics if you deem it necessary. Standard warnings apply - unauthorized access logs directly to Internal Affairs.\n\nBe careful, Kibarashi. Chimera isn't just code.\n\n:: END MEMO ::`,
+                "Personal_Log_Entry_7.log": `:: KIBARASHI - Personal Log - Cycle 88.7 ::\n\nThis place... LX-42. It feels wrong. Cold. Colder than standard Arasaka black sites. The air hums. Not just the servers, something *else*.\n\nThey call it Project Chimera. Fusion of man and machine, they say. Progress. But the whispers... the glitches in the system... the way the lights flicker near the core shard storage... it feels less like fusion, more like something trying to get *out*.\n\nGot the memo today. 'Anomaly'. Understatement of the century. It's like the node itself is developing a ghost. Or maybe that's just the lack of sleep.\n\nThey want me to check the terminal logs if things get worse. 'Secure Node Terminal'. Even the name sounds ominous. Supposedly it has low-level access, bypasses some of the standard security layers if you know how. I should review the KEMPEITAI logs first, see if there are any clues in the standard system chatter. Maybe something about that energy signature or the 'scrambled key'.\n\nJust need to keep my head down, do the job, get out. But I've got a bad feeling. This project is cursed.\n\n:: END LOG ::`,
+                "KEMPEITAI_Report_Delta.log": `// KEMPEITAI AUTO-LOG - REF: KD-LX42-88.7-004 //\nSTATUS: WATCHCON 3\n\nTHREAT ASSESSMENT: Internal Subsystem Anomaly (Sector 7G)\n- Energy flux remains within containment thresholds (Margin: 1.7%).\n- Data corruption localized; core functions unaffected.\n- Scrambled KMI Key: K7G-X3Z-R8A (Ref: AUDIT LOG)\n\nCOUNTERMEASURES:\n- Enhanced monitoring protocols ACTIVE.\n- External network access restricted pending analysis.\n- CERBERUS emulation layer reports no active intrusion vectors.\n\nRECOMMENDATION:\n- On-site operative (KIBARASHI_734) to perform Level 2 diagnostic via Secure Node Terminal if instability escalates.\n- Physical inspection of Shard 7 hardware deferred pending remote scan results.\n\n// END REPORT //`, // NEW
+                "Network_Analysis": `FOLDER: Network_Analysis\n\n[EMPTY FOLDER]\n\n// Automated Note: Network analysis tools require terminal access. //\n// Use 'scan' command within Secure Node Terminal environment. //`,
+                "Employee_Mandates": `FOLDER: Employee_Mandates\n\n- MANDATE_774B_Cyberware_Audit.pdf\n- MANDATE_812C_Subdermal_Tracking.pdf\n- MANDATE_901A_Biometric_Data_Sharing.pdf\n\n// Access Denied: Security Clearance Insufficient //` // NEW
+            };
+
+            // Actually create the icons on the desktop
+            function createDesktop() {
+                desktopContainer.innerHTML = ''; // Clear existing icons first
+                desktopItems.forEach(item => {
+                    const iconDiv = document.createElement('div');
+                    iconDiv.className = 'desktop-icon';
+                    iconDiv.dataset.name = item.name; // Store name/type for click handler
+                    iconDiv.dataset.type = item.type;
+                    if (item.target) { iconDiv.dataset.target = item.target; } // Store target app if it has one
+                    const symbolSpan = document.createElement('span');
+                    symbolSpan.className = 'icon-symbol';
+                    symbolSpan.textContent = item.symbol;
+                    const labelSpan = document.createElement('span');
+                    labelSpan.className = 'icon-label';
+                    labelSpan.textContent = item.name;
+                    iconDiv.appendChild(symbolSpan);
+                    iconDiv.appendChild(labelSpan);
+                    iconDiv.addEventListener('click', handleDesktopIconClick); // Make it clickable
+                    desktopContainer.appendChild(iconDiv);
+                });
+            }
+
+            // === MAKING DESKTOP ICONS CLICKABLE ===
+            function handleDesktopIconClick(event) {
+                 playSound('desktop_click'); // Click!
+                 const icon = event.currentTarget;
+                 const type = icon.dataset.type;
+                 const name = icon.dataset.name;
+                 const target = icon.dataset.target;
+                 if (type === 'file' || type === 'folder') {
+                     showFileViewer(name, type); // Open file/folder in the viewer
+                 }
+                 else if (type === 'app' && target === 'terminal') {
+                     launchTerminal(); // Launch the terminal application
+                 }
+            }
+            // Shows the popup file viewer
+            function showFileViewer(itemName, itemType) {
+                 playSound('file_open'); // Sound for opening the viewer
+                 let content = (itemType === 'folder')
+                    ? (desktopFilesContent[itemName] || `Contents of folder "${itemName}"`) // Show folder content or placeholder
+                    : (desktopFilesContent[itemName] || `ERROR: File content not found for ${itemName}`); // Show file content or error
+                 fileViewerFilename.textContent = itemName; // Set the title bar text
+                 fileViewerContent.textContent = content; // Put the content in the viewer
+                 fileViewer.classList.remove('hidden'); // Make the viewer visible
+                 fileViewerContent.scrollTop = 0; // Make sure the file viewer starts at the top
+             }
+            // Hides the file viewer
+            function closeFileViewer() {
+                playSound('file_close'); // Sound for closing the viewer
+                fileViewer.classList.add('hidden');
+            }
+            fileViewerCloseBtn.addEventListener('click', closeFileViewer); // Make the 'X' button work
+
+             // === TASKBAR STUFF (Clock and Status) ===
+             function updateClock() {
+                 const now = new Date();
+                 const hours = String(now.getHours()).padStart(2, '0');
+                 const minutes = String(now.getMinutes()).padStart(2, '0');
+                 const seconds = String(now.getSeconds()).padStart(2, '0');
+                 taskbarClock.textContent = `${hours}:${minutes}:${seconds}`;
+             }
+             // Just cycle through some fake CPU/Net states for looks
+             function updateTaskbarDetails() {
+                 const cpuStates = ['IDLE', 'LOW', 'MODERATE', 'IDLE', 'IDLE'];
+                 const netStates = ['SECURE', 'ACTIVITY LOW', 'SECURE', 'MONITORING'];
+                 const randomCpu = cpuStates[Math.floor(Math.random() * cpuStates.length)];
+                 const randomNet = netStates[Math.floor(Math.random() * netStates.length)];
+                 taskbarDetails.textContent = `NET: AICN v3.1 ${randomNet} | CPU: ${randomCpu}`;
+             }
+
+
+            // === LAUNCHING THE TERMINAL ===
+            function launchTerminal() {
+                playSound('terminal_open'); // Sound effect for opening the terminal
+                // Hide desktop stuff
+                desktopContainer.classList.add('hidden');
+                fileViewer.classList.add('hidden'); // Make sure file viewer is closed too
+                taskbar.classList.add('hidden');
+                // Show terminal
+                gameContainer.classList.remove('hidden');
+
+                // Stop the desktop background noise and notifications when the terminal opens
+                 stopSound('ambient_hum');
+                 if(notificationIntervalId) clearInterval(notificationIntervalId); // Stop notification timer
+                 notificationIntervalId = null;
+                 closeAllNotifications(); // Clean up any lingering notifications
+
+                initializeTerminalGame(); // Start the actual terminal game logic
+            }
+
+            // === Making those Annoying Notifications Work ===
+             function createNotification(title, message) {
+                 playSound('notification_popup'); // Notification sound
+                 const notification = document.createElement('div');
+                 notification.className = 'notification';
+
+                 const titleEl = document.createElement('strong');
+                 titleEl.textContent = title;
+                 notification.appendChild(titleEl);
+
+                 const messageEl = document.createElement('p');
+                 messageEl.style.margin = '0'; // Get rid of extra space around the message paragraph
+                 messageEl.textContent = message;
+                 notification.appendChild(messageEl);
+
+                 const closeBtn = document.createElement('button');
+                 closeBtn.className = 'notification-close';
+                 closeBtn.innerHTML = '×'; // The little 'close' button icon
+                 closeBtn.onclick = () => {
+                     // Animate out
+                     notification.style.transition = 'opacity 0.3s, transform 0.3s';
+                     notification.style.opacity = '0';
+                     notification.style.transform = 'translateX(100%)';
+                     // Remove from DOM after animation
+                     setTimeout(() => notification.remove(), 300);
+                 };
+                 notification.appendChild(closeBtn);
+
+                 // Notifications disappear on their own after a bit
+                 setTimeout(() => {
+                     if (notification.parentNode) { // Make sure we don't try to close a notification that's already gone
+                        closeBtn.click();
+                     }
+                 }, 15000); // 15 seconds
+
+                 notificationArea.appendChild(notification); // Add to the screen
+
+                 // Don't let the screen get too cluttered with old notifications
+                 while (notificationArea.children.length > 3) {
+                    notificationArea.firstChild.remove(); // Remove the oldest one (which is visually at the top)
+                 }
+             }
+
+             // Picks a random notification to show
+             function showRandomNotification() {
+                 if (desktopContainer.classList.contains('hidden')) return; // No notifications when we're not on the desktop
+                 const randomIndex = Math.floor(Math.random() * arasakaNotifications.length);
+                 const notificationData = arasakaNotifications[randomIndex];
+                 createNotification(notificationData.title, notificationData.message);
+             }
+
+             // Clears all notifications immediately (used when switching to terminal)
+             function closeAllNotifications() {
+                 while (notificationArea.firstChild) {
+                     notificationArea.firstChild.remove();
+                 }
+             }
+            // === END Notification Logic ===
+
+
+            // === THE CORE TERMINAL GAMEPLAY ===
+            function initializeTerminalGame() {
+                 console.log("Initializing Terminal Game..."); // Helpful message for browser console
+                 const typingDelay = 10; // Adjust typing speed here if needed (lower is faster)
+                 let isTyping = false; // Is the terminal "typing" output?
+                 let commandHistory = []; // Store user commands for arrow key history
+                 let historyIndex = -1; // Position in command history
+                 let puzzleActive = false; // Is the glyph puzzle currently showing?
+                 let passphraseRequired = false; // Are we waiting for the passphrase input?
+
+                 // Make the KEMPEITAI report readable in the terminal too
+                 const files = {
+                    'readme.md': `\nARASAKA SECURE NODE LX-42\nNODE CONFIGURATION v2.1A\n------------------------\nSYS CORE: ARASAKA OS 'SHINOBI' v6.2\nSECURITY: Counter-Intrusion Suite 'KEMPEITAI' (CERBERUS v3.1 Emulation Layer ACTIVE)\nPRIMARY DATA: Classified. Access via DATA_SHARDS requires KMI authentication.\nUTILITIES: Standard system tools available. Use 'scan' for network assessment.\nLOGS: Audit trails maintained in 'security_log.txt'. Unauthorized access attempts flagged for counter-ops.\n\nEMERGENCY OVERRIDE AUTH:\nChallenge Phrase: "Where did the rain turn to neon?"\n(Check audit logs for related data fragments if response unknown)\n`,
+                    'security_log.txt': `\n[SYS] KMI Authentication Module Initialized. Node Secure.\n[SEC] KEMPEITAI Suite Active. External Threat Level: Nominal.\n[SYS] Integrity Check Complete. All Systems Green.\n[AUDIT] Energy Signature Anomaly Detected - Vicinity DATA_SHARDS/shard_7. Classification: Unknown.\n[SEC] Protocol 7 Applied: Signature Scrambled & Logged.\n      Glyphic Signature Key: K7G-X3Z-R8A\n[AUDIT] User 'A-SECADMIN-03' session terminated. Console 01.\n[WARN] External Probe Detected [Origin: 77.12.90.21] - Neutralized by KEMPEITAI. Flagged for analysis.\n...\n[SYS] Performing Data Scrub Routine Cycle 7... OK.\n[RECOVERY] Anomaly during scrub: Partial data fragment recovered from corrupted sector 7G.\n[RECOVERY] Timestamp mismatch. Data integrity questionable. Marking for review.\n[RECOVERY] --- FRAGMENT START ---\n[RECOVERY] Security Challenge Query: "Where did the rain turn to neon?" // Associated Response Logged: Akira Alley // Security Level: Low\n[RECOVERY] --- FRAGMENT END ---\n[AUDIT] System returning to nominal operations.\n`,
+                    // Pulling the content from the desktop file data
+                    'kempeitai_report_delta.log': desktopFilesContent['KEMPEITAI_Report_Delta.log']
+                 };
+                 // --- Puzzle Setup ---
+                 const targetSignature = "K7GX3ZR8A"; // The code we need to match
+                 const glyphSet = ['ALPHA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT', 'GOLF', 'HOTEL', 'INDIA', 'JULIET', 'KILO', 'LIMA', 'MIKE', 'NOVEMBER', 'OSCAR', 'PAPA', 'QUEBEC', 'ROMEO', 'SIERRA', 'TANGO', 'UNIFORM', 'VICTOR', 'WHISKEY', 'XRAY', 'YANKEE', 'ZULU', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']; // All possible glyphs
+                 const signatureToGlyphMap = {}; // Map characters (K, 7, G...) to specific glyphs (KILO, 7, GOLF...)
+                 const availableGlyphs = [...glyphSet]; // Copy of glyphs we can pick from
+                 // Assign a random unique glyph to each character in the target signature
+                 targetSignature.split('').forEach(char => { if (!signatureToGlyphMap[char]) { const randomIndex = Math.floor(Math.random() * availableGlyphs.length); signatureToGlyphMap[char] = availableGlyphs.splice(randomIndex, 1)[0]; } });
+                 const requiredGlyphs = Object.values(signatureToGlyphMap); // Get the list of glyphs actually used in the signature
+                 // Fill up the grid with extra random glyphs if needed, so there are always 9
+                 while (requiredGlyphs.length < 9) { const randomIndex = Math.floor(Math.random() * availableGlyphs.length); requiredGlyphs.push(availableGlyphs.splice(randomIndex, 1)[0]); }
+                 // --- Passphrase ---
+                 const correctPassphrase = "Akira Alley"; // The answer to the riddle
+                 let currentPuzzleSequence = []; // Tracks the user's clicks in the puzzle
+
+                 // Helper to make sure the terminal output scrolls down automatically
+                 function scrollOutput() { const isScrolledToBottom = terminalOutput.scrollHeight - terminalOutput.clientHeight <= terminalOutput.scrollTop + 30; if (isScrolledToBottom) { terminalOutput.scrollTop = terminalOutput.scrollHeight; } }
+
+                 // Function to display text with a typing effect
+                 async function typeEffect(element, text, className = 'log', callback = null) {
+                     return new Promise(async (resolve) => {
+                         isTyping = true; inputLine.classList.add('hidden'); // Hide the input line while typing
+                         const line = document.createElement('div');
+                         // Need to handle the special styling for recovered data lines
+                         if (text.includes('[RECOVERY]')) { line.className = `output-line recovered-data`; } else { line.className = `output-line ${className}`; }
+                         element.appendChild(line);
+                         let buffer = ''; // Temporary buffer for smoother typing effect
+                         let playSoundInterval = null;
+
+                         // Play the typing sound while text appears
+                         if(text.length > 5) { // Don't bother playing sound for very short messages
+                             playSound('typewriter');
+                             playSoundInterval = setInterval(() => playSound('typewriter'), 150); // How often the type sound repeats
+                         }
+
+                         for (let i = 0; i < text.length; i++) {
+                             buffer += text[i];
+                             // Update the text on screen often so it looks smooth
+                             if (buffer.length > 0 && (text[i] === ' ' || text[i] === '\n' || i % 3 === 0 || i === text.length - 1)) {
+                                 line.innerHTML += buffer; // Using innerHTML to render potential future formatting/colors within a line
+                                 buffer = '';
+                             }
+                             scrollOutput(); // Keep scrolling
+                             await sleep(typingDelay); // Pause briefly between characters
+                         }
+                         // Just in case there's leftover text
+                         if (buffer.length > 0) { line.innerHTML += buffer; }
+
+                         // Stop the typing noise when done
+                         if (playSoundInterval) clearInterval(playSoundInterval);
+                          stopSound('typewriter'); // Make double sure the typewriter sound stops
+
+                         scrollOutput(); isTyping = false;
+                         // Re-show the input line if the game isn't waiting for puzzle/passphrase
+                         if (!puzzleActive && !passphraseRequired) { inputLine.classList.remove('hidden'); terminalInput.focus(); }
+                         // If waiting for passphrase, only show input after the prompt
+                         else if (passphraseRequired) { if (text.includes("Enter Response:")) { inputLine.classList.remove('hidden'); terminalInput.focus(); } }
+                         if (callback) callback(); // Run any function provided after typing finishes
+                         resolve(); // Signal that the typing is complete
+                     });
+                 }
+
+                 // Adds a line instantly without typing effect
+                 function addStaticOutput(text, className = 'log') {
+                     const line = document.createElement('div');
+                     // Handle special styling for recovered data
+                     if (text.includes('[RECOVERY]')) { line.className = `output-line recovered-data`; } else { line.className = `output-line ${className}`; }
+                     line.innerHTML = text; // Use innerHTML for prompt styling
+                     terminalOutput.appendChild(line);
+                     scrollOutput();
+                 }
+
+                 // Handles user input commands
+                 function processCommand(command) {
+                     addStaticOutput(`<span class="prompt-input"># ${command}</span>`); // Output the command the user typed
+                     commandHistory.push(command); // Remember the command for history
+                     historyIndex = commandHistory.length; // Reset history index
+
+                     // If we're waiting for the passphrase, handle that instead of normal commands
+                     if (passphraseRequired) {
+                         checkPassphrase(command);
+                         return;
+                     }
+
+                     const parts = command.toLowerCase().split(' '); // Split command into parts (like 'cat file.txt')
+                     const cmd = parts[0];
+                     const arg = parts[1];
+                     let isError = false; // We'll use this to play the error sound only once per command
+
+                     switch (cmd) {
+                         case 'help': typeEffect(terminalOutput, `ARASAKA Secure Node Command Set:\n  help        Display available commands.\n  ls          List directory contents.\n  scan        Perform network vulnerability assessment.\n  cat <file>  Display file contents (e.g., cat security_log.txt).\n  connect     Establish connection to target shard (requires scan).\n  clear       Clear terminal display.`); break;
+                         case 'ls':
+                            // Make sure the new file shows up in 'ls'
+                            typeEffect(terminalOutput, `CORE_SYS/                     (DIR)\nDATA_SHARDS/                  (DIR)\nsecurity_log.txt          (FILE)\nreadme.md                 (FILE)\nkempeitai_report_delta.log  (FILE)`);
+                            break;
+                         case 'cat':
+                            if (!arg) {
+                                typeEffect(terminalOutput, `Usage: cat <filename>`, 'error');
+                                isError = true;
+                            } else if (files[arg]) {
+                                // Handle multi-line file content properly
+                                const contentToDisplay = files[arg] || `ERROR: File content not found: ${arg}`;
+                                if (contentToDisplay.startsWith('ERROR')) {
+                                     typeEffect(terminalOutput, contentToDisplay, 'error');
+                                     isError = true;
+                                } else {
+                                     // Type out files line by line
+                                    const lines = contentToDisplay.trim().split('\n');
+                                    (async () => {
+                                        for (const lineText of lines) {
+                                            let lineClass = 'log';
+                                            // Mark lines from recovered fragments differently
+                                            if (lineText.includes('[RECOVERY]')) { lineClass = 'recovered-data'; }
+                                            await typeEffect(terminalOutput, lineText, lineClass);
+                                        }
+                                    })();
+                                }
+                            } else {
+                                typeEffect(terminalOutput, `ERROR: File not found: ${arg}`, 'error');
+                                isError = true;
+                            }
+                            break;
+                         case 'scan': typeEffect(terminalOutput, `Initiating Network Assessment...\n[+] Firewall Detected: KEMPEITAI Suite (CERBERUS Emulation: ACTIVE)\n[+] Packet Flow Analysis... Anomaly Confirmed: DATA_SHARDS vicinity.\n[!] VULNERABILITY DETECTED: KMI Authentication Interface exposed on shard_7.\n    Bypass potential identified.\n[+] Recommendation: Use 'connect DATA_SHARDS/shard_7' to engage interface.`, 'warning'); break;
+                         case 'connect':
+                            // If the connect command targets the right shard...
+                            if (arg === 'data_shards/shard_7') {
+                                // ...then start the puzzle!
+                                typeEffect(terminalOutput, `Establishing connection to ${arg}...\n[ALERT] Connection Routed via KEMPEITAI.\n[ALERT] KMI Authentication Required. Engaging Glyphic Interface...`, 'warning').then(() => { setupPuzzle(); });
+                            } else {
+                                // Otherwise, show an error
+                                typeEffect(terminalOutput, `ERROR: Invalid connection target specified. Use 'scan' output.`, 'error');
+                                isError = true;
+                            }
+                            break;
+                         case 'clear': terminalOutput.innerHTML = ''; break; // Clear the screen
+                         default: typeEffect(terminalOutput, `ERROR: Unrecognized command: '${command}'. Type 'help'.`, 'error'); isError = true;
+                     }
+
+                     if (isError) {
+                         playSound('terminal_error'); // Boop! Error sound.
+                     }
+                 }
+                 // Sets up the visual glyph puzzle
+                 function setupPuzzle() {
+                     puzzleActive = true; inputLine.classList.add('hidden'); // Hide input line
+                     puzzleGrid.innerHTML = ''; // Clear previous grid
+                     currentPuzzleSequence = []; // Reset user input
+                     puzzleFeedback.textContent = ''; // Clear feedback message
+                     puzzleInputSpan.textContent = ''; // Clear input display
+                     puzzleSignature.textContent = targetSignature; // Show the target sequence
+                     // Shuffle the glyphs and create buttons
+                     const displayGlyphs = [...requiredGlyphs].sort(() => Math.random() - 0.5); // Randomize order
+                     displayGlyphs.forEach(glyph => {
+                         const glyphButton = document.createElement('button');
+                         glyphButton.className = 'puzzle-glyph';
+                         glyphButton.textContent = glyph;
+                         // Find the character this glyph represents (e.g., 'K' for 'KILO') and store it
+                         const originalChar = Object.keys(signatureToGlyphMap).find(key => signatureToGlyphMap[key] === glyph) || '';
+                         glyphButton.dataset.char = originalChar;
+                         glyphButton.onclick = () => handlePuzzleClick(glyphButton, glyph); // Set click action
+                         puzzleGrid.appendChild(glyphButton);
+                     });
+                     puzzleContainer.classList.remove('hidden'); // Show the puzzle box
+                 }
+                 // Handles clicks on the puzzle glyphs
+                 function handlePuzzleClick(buttonElement, clickedGlyph) {
+                     if (currentPuzzleSequence.length >= targetSignature.length) return; // Don't allow more clicks than needed
+
+                     // Get the character this glyph represents (like 'K' for 'KILO')
+                     const representedChar = buttonElement.dataset.char;
+                     if (!representedChar) {
+                         // This shouldn't happen if setup is correct, but good to check
+                         console.error("Glyph Map Error:", clickedGlyph);
+                         puzzleFeedback.textContent = 'System Error - Consult Manual.';
+                         puzzleFeedback.className = 'error';
+                         return;
+                     }
+                     // Add the character to our input sequence
+                     currentPuzzleSequence.push(representedChar);
+                     puzzleInputSpan.textContent = currentPuzzleSequence.join(' '); // Show the sequence being built
+                     buttonElement.classList.add('selected'); // Brief flash to show selection
+                     setTimeout(() => buttonElement.classList.remove('selected'), 300);
+
+                     const currentEnteredString = currentPuzzleSequence.join('');
+                     // Check if the sequence so far matches the start of the target
+                     if (targetSignature.startsWith(currentEnteredString)) {
+                         // Good click! Play valid sound.
+                         puzzleFeedback.textContent = 'Input Accepted...';
+                         puzzleFeedback.className = '';
+                         playSound('puzzle_click_valid');
+                         // If the whole sequence is right, success!
+                         if (currentEnteredString === targetSignature) {
+                             puzzleSuccess();
+                         }
+                     } else {
+                         // Wrong click! Play invalid sound and trigger failure.
+                         playSound('puzzle_click_invalid');
+                         puzzleFailure(buttonElement);
+                     }
+                 }
+                 // Called when the puzzle is solved correctly
+                 function puzzleSuccess() {
+                     playSound('puzzle_success'); // Play success sound for puzzle
+                     puzzleFeedback.textContent = 'Authentication Confirmed. KMI Interface Bypassed.';
+                     puzzleFeedback.className = 'success';
+                     puzzleGrid.style.pointerEvents = 'none'; // Make the grid unclickable now
+                     // Short delay before moving on
+                     setTimeout(() => {
+                         puzzleContainer.classList.add('hidden'); // Hide puzzle
+                         puzzleActive = false; // No longer in puzzle mode
+                         passphraseRequired = true; // Now waiting for passphrase
+                         // Type out the success message and the next challenge
+                         typeEffect(terminalOutput, `\n[+] KMI AUTHENTICATION SUCCESSFUL!\n[!] Secondary Override Protocol Active.\n[?] Challenge Phrase: "Where did the rain turn to neon?"\n    Enter Response:`, 'success');
+                     }, 1500);
+                 }
+                 // Called when the user makes a mistake in the puzzle
+                 function puzzleFailure(buttonElement) {
+                     playSound('puzzle_fail'); // Play fail sound for puzzle
+                     puzzleFeedback.textContent = 'Authentication Failed! Sequence Purged.';
+                     puzzleFeedback.className = 'error';
+                     buttonElement.classList.add('error-flash'); // Flash the wrong button red
+                     puzzleGrid.style.pointerEvents = 'none'; // Temporarily disable grid clicks
+                     // After a short pause, reset everything for another try
+                     setTimeout(() => {
+                         currentPuzzleSequence = []; // Clear the input sequence
+                         puzzleInputSpan.textContent = ''; // Clear the displayed sequence
+                         puzzleFeedback.textContent = ''; // Clear the feedback
+                         // Remove the error flash effect from all buttons
+                         document.querySelectorAll('.puzzle-glyph.error-flash').forEach(el => el.classList.remove('error-flash'));
+                         puzzleGrid.style.pointerEvents = 'auto'; // Re-enable grid clicks
+                     }, 1000);
+                 }
+                 // Checks the passphrase entered by the user
+                 function checkPassphrase(input) {
+                     // Check if the typed passphrase is correct (case-insensitive)
+                     if (input.trim().toLowerCase() === correctPassphrase.toLowerCase()) {
+                         playSound('passphrase_success'); // Play success sound for passphrase
+                         // Type out the final success message
+                         typeEffect(terminalOutput, `\n[+] Response Verified. Override Confirmed.\n[+] KEMPEITAI Security Protocols Disengaged from Target Node.\n[+] Accessing DATA_SHARDS/shard_7... Secure Channel Established.\n    *** Classified Data Fragment Acquired ***\n    Redirecting to Designated Extraction Point... [ACCESS GRANTED]`, 'success').then(() => {
+                             inputLine.classList.add('hidden'); // Hide input line, game is won
+                             passphraseRequired = false; // No longer waiting for passphrase
+                             // Short delay, then redirect to the final page
+                             setTimeout(() => {
+                                 // !!! CHANGE THIS URL when done !!!
+                                 window.location.href = 'https://willemtouw.com/about-page.html';
+                             }, 2500);
+                         });
+                     } else {
+                         playSound('passphrase_fail'); // Play fail sound for passphrase
+                         // Type out the failure message
+                         typeEffect(terminalOutput, `[ALERT] Incorrect Response. Access Denied. Security Countermeasures Activated!`, 'error').then(() => {
+                             terminalInput.focus(); // Let the user try the passphrase again
+                         });
+                     }
+                 }
+
+                 // --- Terminal Input Handling ---
+                 terminalInput.addEventListener('keydown', (e) => {
+                     // Don't let the user type while the computer is "typing" or the puzzle is active
+                     if (isTyping || puzzleActive) { e.preventDefault(); return; }
+
+                     // Uncomment this block if you want a sound for every keypress (might be too much)
+                     // if (e.key.length === 1 || e.key === 'Backspace') {
+                     //     playSound('typewriter', 0.2); // Lower volume for keypress
+                     // }
+
+                     // When Enter is pressed...
+                     if (e.key === 'Enter') {
+                         e.preventDefault(); // Stop Enter from adding a newline
+                         const command = terminalInput.value.trim(); // Get the command, remove whitespace
+                         terminalInput.value = ''; // Clear the input field
+                         if (command) {
+                             processCommand(command); // If there's a command, process it
+                         } else {
+                             // If input is empty, just add a new prompt line
+                             addStaticOutput(`<span class="prompt-input"># </span>`); scrollOutput();
+                         }
+                     // Handle UP arrow for command history
+                     } else if (e.key === 'ArrowUp') {
+                         e.preventDefault(); if (commandHistory.length > 0) { historyIndex = Math.max(0, historyIndex - 1); terminalInput.value = commandHistory[historyIndex] || ""; terminalInput.setSelectionRange(terminalInput.value.length, terminalInput.value.length); } // Move cursor to end
+                     // Handle DOWN arrow for command history
+                     } else if (e.key === 'ArrowDown') {
+                         e.preventDefault(); if (commandHistory.length > 0) { historyIndex = Math.min(commandHistory.length, historyIndex + 1); terminalInput.value = (historyIndex < commandHistory.length) ? commandHistory[historyIndex] : ""; terminalInput.setSelectionRange(terminalInput.value.length, terminalInput.value.length); } // Move cursor to end
+                     }
+                 });
+
+                 // Make sure clicking inside the terminal focuses the input field (unless the puzzle is up)
+                 gameContainer.addEventListener('click', (e) => { if (!puzzleActive && !e.target.closest('#visual-puzzle-container')) { terminalInput.focus(); } });
+
+                 // --- Initial Terminal Output ---
+                 terminalOutput.innerHTML = ''; // Clear any previous output
+                 // The initial welcome message for the terminal
+                 typeEffect(terminalOutput, `Establishing Secure Connection to Node LX-42... DONE.
+Authenticating User Credentials... ANONYMOUS_ACCESS GRANTED.
+Loading ARASAKA OS 'SHINOBI' v6.2 Shell Interface... [OK]
+Network Interface Active.............. [OK]
+KEMPEITAI Counter-Intrusion Suite..... [ACTIVE]
+
+Node Ready. Use 'help' for command list.
+`)                 .then(() => {
+                    // Make sure the input is focused after the welcome message (if not starting puzzle)
+                    if (!puzzleActive && !passphraseRequired) { terminalInput.focus(); }
+                });
+            }
+
+            // === KICK IT OFF! ===
+            loadSounds(); // Load up all the sounds first
+            runBootSequence(); // Start the whole thing with the boot sequence
+
+        }); // All setup is done after the page loads
+        // === END OF THE LINE (JavaScript) ===
+    </script>
+
+</body>
+</html>
